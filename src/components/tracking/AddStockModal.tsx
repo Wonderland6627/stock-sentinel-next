@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { StockQuote } from "@/lib/stock-api/types";
 
 interface AddStockModalProps {
   open: boolean;
@@ -21,13 +22,49 @@ export default function AddStockModal({
   const [td9Low, setTd9Low] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
 
   if (!open) return null;
+
+  async function handleCodeBlur() {
+    if (!code.trim()) return;
+    setQuoteLoading(true);
+    setQuoteError("");
+    try {
+      const res = await fetch(
+        `/api/stock/quote?code=${encodeURIComponent(code.trim())}`
+      );
+      if (!res.ok) throw new Error("行情获取失败");
+      const quote: StockQuote = await res.json();
+      if (quote.price > 0 && quote.name) {
+        setName(quote.name);
+        setEntryPrice(quote.price.toFixed(2));
+      } else {
+        setQuoteError("未获取到有效行情，请手动填写");
+      }
+    } catch {
+      setQuoteError("行情获取失败，请手动填写");
+    } finally {
+      setQuoteLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (!code.trim()) {
+      setError("请填写股票代码");
+      setLoading(false);
+      return;
+    }
+    if (!entryPrice || Number(entryPrice) <= 0) {
+      setError("买入价格必须大于 0");
+      setLoading(false);
+      return;
+    }
 
     const supabase = createClient();
     const {
@@ -45,7 +82,7 @@ export default function AddStockModal({
       stock_name: name.trim() || null,
       entry_date: new Date().toISOString().split("T")[0],
       entry_price: Number(entryPrice),
-      td9_low_price: Number(td9Low),
+      td9_low_price: Number(td9Low) || 0,
       layer_count: 1,
       status: "holding",
     });
@@ -85,14 +122,22 @@ export default function AddStockModal({
               <label className="block text-xs font-medium mb-1 text-muted-foreground">
                 股票代码
               </label>
-              <input
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="如 sh600036"
-                required
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  onBlur={handleCodeBlur}
+                  placeholder="如 sh600036"
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                {quoteLoading && (
+                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {quoteError && (
+                <p className="text-danger text-xs mt-1">{quoteError}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium mb-1 text-muted-foreground">
@@ -119,7 +164,6 @@ export default function AddStockModal({
                 value={entryPrice}
                 onChange={(e) => setEntryPrice(e.target.value)}
                 placeholder="0.00"
-                required
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
@@ -133,7 +177,6 @@ export default function AddStockModal({
                 value={td9Low}
                 onChange={(e) => setTd9Low(e.target.value)}
                 placeholder="0.00"
-                required
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>

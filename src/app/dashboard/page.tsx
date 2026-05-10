@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Shield, RefreshCw, Loader2, Search } from "lucide-react";
+import { Shield, RefreshCw, Loader2, Search, Info } from "lucide-react";
 import StockCard from "@/components/stock/StockCard";
+import AlertInfoModal from "@/components/dashboard/AlertInfoModal";
 import type { StockSignal } from "@/lib/stock-api/types";
 
 export default function DashboardPage() {
@@ -10,6 +11,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [showInfo, setShowInfo] = useState(false);
 
   async function loadSignals() {
     setLoading(true);
@@ -45,6 +47,13 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <Shield className="w-6 h-6 text-primary" />
           <h1 className="text-xl font-bold">今日预警</h1>
+          <button
+            onClick={() => setShowInfo(true)}
+            className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            aria-label="预警条件说明"
+          >
+            <Info className="w-4 h-4" />
+          </button>
         </div>
         <button
           onClick={loadSignals}
@@ -124,6 +133,7 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+      <AlertInfoModal open={showInfo} onClose={() => setShowInfo(false)} />
     </div>
   );
 }
