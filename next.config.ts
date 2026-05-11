@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone', // 启用 standalone 模式用于 Docker 部署
+  // output: 'standalone', // 仅用于 Docker 部署，Vercel 部署时不需要
 };
 
 export default nextConfig;
