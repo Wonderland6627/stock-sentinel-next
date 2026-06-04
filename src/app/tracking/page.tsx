@@ -45,34 +45,68 @@ export default function TrackingPage() {
     setLoading(false);
   }, [router]);
 
-  const loadQuotes = useCallback(async () => {
-    const holdingStocks = stocks.filter((s) => s.status === "holding");
-    if (holdingStocks.length === 0) return;
+  useEffect(() => {
+    let ignore = false;
 
-    const results = await Promise.allSettled(
-      holdingStocks.map(async (s) => {
-        const res = await fetch(`/api/stock/quote?code=${s.stock_code}`);
-        if (!res.ok) return null;
-        return res.json() as Promise<StockQuote>;
-      })
-    );
+    async function loadInitialStocks() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const newQuotes: Record<string, StockQuote> = {};
-    results.forEach((r) => {
-      if (r.status === "fulfilled" && r.value) {
-        newQuotes[r.value.code] = r.value;
+      if (!user) {
+        router.push("/login");
+        return;
       }
-    });
-    setQuotes((prev) => ({ ...prev, ...newQuotes }));
+
+      const { data } = await supabase
+        .from("user_stocks")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (!ignore && data) setStocks(data as UserStock[]);
+      if (!ignore) setLoading(false);
+    }
+
+    void loadInitialStocks();
+
+    return () => {
+      ignore = true;
+    };
+  }, [router]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadHoldingQuotes() {
+      const holdingStocks = stocks.filter((s) => s.status === "holding");
+      if (holdingStocks.length === 0) return;
+
+      const results = await Promise.allSettled(
+        holdingStocks.map(async (s) => {
+          const res = await fetch(`/api/stock/quote?code=${s.stock_code}`);
+          if (!res.ok) return null;
+          return res.json() as Promise<StockQuote>;
+        })
+      );
+
+      const newQuotes: Record<string, StockQuote> = {};
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && result.value) {
+          newQuotes[result.value.code] = result.value;
+        }
+      });
+
+      if (!ignore) setQuotes((prev) => ({ ...prev, ...newQuotes }));
+    }
+
+    void loadHoldingQuotes();
+
+    return () => {
+      ignore = true;
+    };
   }, [stocks]);
-
-  useEffect(() => {
-    loadStocks();
-  }, [loadStocks]);
-
-  useEffect(() => {
-    if (stocks.length > 0) loadQuotes();
-  }, [stocks, loadQuotes]);
 
   async function handleStopLoss(stock: UserStock) {
     const supabase = createClient();

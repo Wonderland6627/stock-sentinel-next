@@ -6,6 +6,10 @@ export interface UserStock {
   entry_date: string;
   entry_price: number;
   td9_low_price: number;
+  strategy_id: string | null;
+  strategy_version: string | null;
+  signal_date: string | null;
+  entry_signal_label: string | null;
   layer_count: number;
   status: "holding" | "sold" | "stop_loss";
   sell_records: SellRecord[];

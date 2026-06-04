@@ -5,6 +5,17 @@ import { Shield, RefreshCw, Loader2, Search, Info } from "lucide-react";
 import StockCard from "@/components/stock/StockCard";
 import AlertInfoModal from "@/components/dashboard/AlertInfoModal";
 import type { StockSignal } from "@/lib/stock-api/types";
+import { toLegacyStockSignal } from "@/modules/signal-engine/adapters";
+import type { ScanListItem } from "@/modules/signal-engine/types";
+
+const LOAD_ERROR = "数据加载失败，请稍后重试";
+
+async function fetchSignals(): Promise<StockSignal[]> {
+  const res = await fetch("/api/stock/scan");
+  if (!res.ok) throw new Error("scan_failed");
+  const data: ScanListItem[] = await res.json();
+  return data.map(toLegacyStockSignal);
+}
 
 export default function DashboardPage() {
   const [signals, setSignals] = useState<StockSignal[]>([]);
@@ -17,29 +28,43 @@ export default function DashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/stock/scan");
-      if (!res.ok) throw new Error("扫描失败");
-      const data = await res.json();
-      setSignals(data);
+      setSignals(await fetchSignals());
     } catch {
-      setError("数据加载失败，请稍后重试");
+      setError(LOAD_ERROR);
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadSignals();
+    let ignore = false;
+
+    async function loadInitialSignals() {
+      try {
+        const nextSignals = await fetchSignals();
+        if (!ignore) setSignals(nextSignals);
+      } catch {
+        if (!ignore) setError(LOAD_ERROR);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    void loadInitialSignals();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const filtered = signals.filter(
-    (s) =>
-      s.name.includes(search) ||
-      s.code.includes(search)
+    (signal) => signal.name.includes(search) || signal.code.includes(search)
   );
 
-  const td9Signals = filtered.filter((s) => s.tdSetup === 9);
-  const pendingSignals = filtered.filter((s) => s.tdSetup >= 7 && s.tdSetup < 9);
+  const td9Signals = filtered.filter((signal) => signal.tdSetup === 9);
+  const pendingSignals = filtered.filter(
+    (signal) => signal.tdSetup >= 7 && signal.tdSetup < 9
+  );
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6">
@@ -59,6 +84,7 @@ export default function DashboardPage() {
           onClick={loadSignals}
           disabled={loading}
           className="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
+          aria-label="刷新预警"
         >
           <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
         </button>
@@ -69,7 +95,7 @@ export default function DashboardPage() {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(event) => setSearch(event.target.value)}
           placeholder="搜索股票代码或名称..."
           className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-border bg-card text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
         />
@@ -100,11 +126,11 @@ export default function DashboardPage() {
             <section>
               <h2 className="text-sm font-semibold text-danger mb-3 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-danger" />
-                买入预警 · 九转=9
+                买入预警 - TD = 9
               </h2>
               <div className="space-y-3">
-                {td9Signals.map((s) => (
-                  <StockCard key={s.code} signal={s} />
+                {td9Signals.map((signal) => (
+                  <StockCard key={signal.code} signal={signal} />
                 ))}
               </div>
             </section>
@@ -114,11 +140,11 @@ export default function DashboardPage() {
             <section>
               <h2 className="text-sm font-semibold text-warning mb-3 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-warning" />
-                关注中 · 九转≥7
+                关注中 - TD 7/8
               </h2>
               <div className="space-y-3">
-                {pendingSignals.map((s) => (
-                  <StockCard key={s.code} signal={s} />
+                {pendingSignals.map((signal) => (
+                  <StockCard key={signal.code} signal={signal} />
                 ))}
               </div>
             </section>
@@ -133,6 +159,7 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
       <AlertInfoModal open={showInfo} onClose={() => setShowInfo(false)} />
     </div>
   );
