@@ -24,18 +24,6 @@ export interface StockQuote {
 
 export type MarketType = "sh" | "sz" | "hk";
 
-export interface StockSignal {
-  code: string;
-  name: string;
-  price: number;
-  changePercent: number;
-  tdSetup: number;
-  bollingerLower: number;
-  bollingerMid: number;
-  bollingerUpper: number;
-  signalType: "buy_td9" | "buy_td13" | "sell_mid" | "sell_upper";
-}
-
 export function parseMarket(code: string): MarketType {
   if (code.startsWith("hk")) return "hk";
   if (code.startsWith("sh")) return "sh";
@@ -52,4 +40,49 @@ export function toEastMoneySecId(code: string): string {
 
 export function toSinaCode(code: string): string {
   return code;
+}
+
+// ─── 市场筛选类型 ───────────────────────────────────
+
+export interface ScreeningParams {
+  /** 支持多选，逗号分隔，如 "sh,kcb" */
+  market?: string;
+  priceMin?: number;
+  priceMax?: number;
+  changePercentMin?: number;
+  changePercentMax?: number;
+  marketCapMin?: number; // 单位：亿
+  marketCapMax?: number;
+  peMin?: number;
+  peMax?: number;
+  turnoverRateMin?: number;
+  turnoverRateMax?: number;
+  sector?: string;
+  sortField?: string;
+  sortOrder?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ScreeningResult {
+  code: string;
+  name: string;
+  price: number;
+  changePercent: number;
+  marketCap: number; // 亿元
+  pe: number | null;
+  turnoverRate: number;
+  amplitude: number; // 振幅%
+  volume: number;
+  high: number;
+  low: number;
+  open: number;
+  sector?: string;
+}
+
+export interface ScreeningResponse {
+  data: ScreeningResult[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

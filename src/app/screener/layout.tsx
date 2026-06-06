@@ -1,6 +1,11 @@
+import type { Metadata } from "next";
 import BottomNav from "@/components/ui/BottomNav";
 
-export default function ProtectedLayout({
+export const metadata: Metadata = {
+  title: "股票筛选",
+};
+
+export default function ScreenerLayout({
   children,
 }: {
   children: React.ReactNode;

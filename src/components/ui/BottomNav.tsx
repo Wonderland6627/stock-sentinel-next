@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, List, User } from "lucide-react";
+import { SlidersHorizontal, List, User } from "lucide-react";
 
 const tabs = [
-  { href: "/dashboard", label: "预警", icon: LayoutDashboard },
-  { href: "/tracking", label: "自选", icon: List },
-  { href: "/profile", label: "个人", icon: User },
+  { href: "/screener", label: "筛选", icon: SlidersHorizontal },
+  { href: "/tracking", label: "追踪", icon: List },
+  { href: "/profile", label: "我的", icon: User },
 ];
 
 export default function BottomNav() {
